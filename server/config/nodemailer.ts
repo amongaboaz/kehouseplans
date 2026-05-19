@@ -1,6 +1,8 @@
-import {createTransport} from 'nodemailer'
+/**
+ * SMTP email sender (Brevo relay) for order confirmations and marketing.
+ */
+import { createTransport } from "nodemailer";
 
-// Create a transporter using SMTP
 const transporter = createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
@@ -10,15 +12,22 @@ const transporter = createTransport({
   },
 });
 
-const sendEmail = async ({ to, subject, body }: {to: string, 
-    subject: string, body: string})=>{
-        const response = await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
-            to,
-            subject,
-            html: body,
-        })
-        return response;
-    }
-    
-    export default sendEmail;
+/** Sends HTML email via configured SMTP */
+const sendEmail = async ({
+  to,
+  subject,
+  body,
+}: {
+  to: string;
+  subject: string;
+  body: string;
+}) => {
+  return transporter.sendMail({
+    from: process.env.SENDER_EMAIL,
+    to,
+    subject,
+    html: body,
+  });
+};
+
+export default sendEmail;

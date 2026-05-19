@@ -1,15 +1,16 @@
-import { User, DeliveryPartner } from "../../generated/prisma/client.ts";
-
+/**
+ * Extends Express Request with authenticated user context set by auth middleware.
+ */
 declare global {
-    namespace Express {
-        interface Request {
-            user?: {
-                id: string,
-                isAdmin?: boolean;
-            }
-            partner?: DeliveryPartner
-        }
+  namespace Express {
+    interface Request {
+      /** Set by JWT auth middleware after token verification */
+      user?: {
+        id: string;
+        isAdmin?: boolean;
+      };
     }
+  }
 }
 
-export{};
+export {};

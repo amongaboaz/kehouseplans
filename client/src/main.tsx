@@ -1,16 +1,22 @@
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
-import {BrowserRouter} from 'react-router-dom'
-import { CartProvider } from './context/CartContext.tsx'
-import { AuthProvider } from './context/AuthContext.tsx'
+/**
+ * App entry — providers for auth, cart, theme, and routing.
+ */
+import { createRoot } from "react-dom/client"
+import { BrowserRouter } from "react-router-dom"
+import { CartProvider } from "./context/CartContext"
+import { AuthProvider } from "./context/AuthContext"
+import { ThemeProvider } from "./providers/ThemeProvider"
+import App from "./App"
+import "./index.css"
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
-  <AuthProvider>
-  <CartProvider>
-    <App />
-    </CartProvider>
-    </AuthProvider>
-  </BrowserRouter>,
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <App />
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  </BrowserRouter>
 )

@@ -1,92 +1,58 @@
+// Prisma schema for KEPlans house-plans e-commerce API
+// Database URL is configured in prisma.config.ts (Prisma 7+)
+
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+/// Registered customers who can place orders
 model User {
-  id        String    @id @default(uuid())
-  name      String
-  email     String    @unique
-  password  String
-  phone     String?   @default("")
-  avatar    String?   @default("")
-  addresses Address[]
-  orders    Order[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Address {
   id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label     String
-  address   String
-  city      String
-  state     String
-  zip       String
-  isDefault Boolean  @default(false)
-  lat       Float
-  lng       Float
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?  @default("")
+  avatar    String?  @default("")
+  orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Product {
+/// Architectural house plan listings (digital products)
+model Design {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?  @default("")
+  price        Float
+  category     String
+  bedrooms     Int      @default(0)
+  bathrooms    Int      @default(0)
+  squareMeters Float    @default(0)
+  images       String[]
+  videos       String[]
+  documents    String[]
+  featured     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Customer purchase orders (items stored as JSON snapshot)
+model Order {
   id            String   @id @default(uuid())
-  name          String
-  description   String?  @default("")
-  price         Float
-  originalPrice Float?   @default(0)
-  image         String
-  category      String
-  unit          String?  @default("piece")
-  stock         Int?     @default(0)
-  isOrganic     Boolean? @default(false)
-  rating        Float?   @default(0)
-  reviewCount   Int?     @default(0)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         Json
+  customerEmail String?
+  paymentMethod String   @default("M-Pesa")
+  subtotal      Float
+  total         Float
+  status        String   @default("Pending Confirmation")
+  statusHistory Json
+  isPaid        Boolean? @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-}
-
-model Order {
-  id              String @id @default(uuid())
-  userId          String
-  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items           Json
-  shippingAddress Json
-  paymentMethod   String @default("card")
-  subtotal        Float
-  deliveryFee     Float? @default(0)
-  tax             Float? @default(0)
-  total           Float
-  status          String @default("Placed")
-  statusHistory   Json
-
-  deliveryPartnerId String?
-  deliveryPartner   DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id], onDelete: SetNull)
-  deliveryOtp       String?          @default("")
-  liveLocation      Json?
-  isPaid            Boolean?         @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model DeliveryPartner {
-  id          String   @id @default(uuid())
-  name        String
-  email       String   @unique
-  password    String
-  phone       String
-  avatar      String?  @default("")
-  vehicleType String?  @default("bike")
-  isActive    Boolean? @default(true)
-  orders      Order[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }

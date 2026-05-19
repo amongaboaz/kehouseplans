@@ -4,22 +4,9 @@ export interface User {
     email: string;
     phone: string;
     avatar: string;
-    addresses: Address[];
     isAdmin?: boolean;
     createdAt: string;
     updatedAt: string;
-}
-
-export interface Address {
-    id: string;
-    label: string;
-    address: string;
-    city: string;
-    state: string;
-    zip: string;
-    isDefault: boolean;
-    lat: number;
-    lng: number;
 }
 
 export interface Category {
@@ -28,62 +15,45 @@ export interface Category {
     image: string;
 }
 
-export interface Product {
+export interface Design {
     id: string;
-    name: string;
+    title: string;
     description: string;
     price: number;
-    originalPrice: number;
-    image: string;
     category: string;
-    unit: string;
-    stock: number;
-    isOrganic: boolean;
-    rating: number;
-    reviewCount: number;
-    discount: number;
+    bedrooms: number;
+    bathrooms: number;
+    squareMeters: number;
+    images: string[];
+    videos: string[];
+    documents: string[];
+    featured: boolean;
     createdAt: string;
 }
 
 export interface CartItem {
-    product: Product;
+    design: Design;
     quantity: number;
 }
 
 export interface OrderItem {
     product: string;
-    name: string;
-    image: string;
+    title: string;
     price: number;
     quantity: number;
-    unit: string;
-}
-
-export interface DeliveryPartner {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    avatar: string;
-    vehicleType: "bike" | "scooter" | "car";
-    isActive: boolean;
-    createdAt: string;
+    documents?: string[];
 }
 
 export interface Order {
     id: string;
     user: string | { id: string; name: string; email: string; phone?: string };
     items: OrderItem[];
-    shippingAddress: Omit<Address, "id" | "isDefault">;
+    customerEmail?: string;
     paymentMethod: string;
     subtotal: number;
-    deliveryFee: number;
-    tax: number;
     total: number;
     status: string;
     statusHistory: { status: string; timestamp: string; note: string }[];
-    deliveryPartner: DeliveryPartner | null;
-    deliveryOtp: string;
     isPaid: boolean;
     createdAt: string;
 }

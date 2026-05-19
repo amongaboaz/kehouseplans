@@ -1,190 +1,200 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import type { Address } from "../types";
-import { ArrowLeft, CheckIcon, ChevronRightIcon, CreditCardIcon, MapPinIcon } from "lucide-react";
-import CheckoutAddress from "../components/Checkout/CheckoutAddress";
-import CheckoutPayment from "../components/Checkout/CheckoutPayment";
-import CheckoutReview from "../components/Checkout/CheckoutReview";
-import api from "../config/api";
-import toast from "react-hot-toast";
-import { useAuth } from "../context/AuthContext";
-import { useCart } from "../context/CartContext";
+/**
+ * Premium checkout — M-Pesa, Bank, Stripe UI; preserves order API integration.
+ */
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { motion } from "framer-motion"
+import { ArrowLeft, Building2, CheckCircle2, CreditCard, Smartphone } from "lucide-react"
+import api from "@/config/api"
+import toast from "react-hot-toast"
+import { useAuth } from "@/context/AuthContext"
+import { useCart } from "@/context/CartContext"
+import { StripePaymentSection } from "@/components/checkout/StripePaymentSection"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
+type PaymentMethod = "M-Pesa" | "Bank Transfer" | "Stripe"
 
 const Checkout = () => {
+  const navigate = useNavigate()
+  const currency = "KES "
+  const { items, cartTotal, clearCart } = useCart()
+  const { user } = useAuth()
 
-    const navigate = useNavigate()
-    const currency = import.meta.env.VITE_CURRENCY_SYMBOL || 'usd';
+  const [loading, setLoading] = useState(false)
+  const [customerEmail, setCustomerEmail] = useState(user?.email || "")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("M-Pesa")
+  const [success, setSuccess] = useState(false)
 
-    const { items, cartTotal, clearCart } = useCart()
-    const { user } = useAuth ()
-    const [step, setStep] = useState("address")
-    const [loading, setLoading] = useState(false)
+  const total = cartTotal
 
-
-    const [address, setAddress] = useState<Address>({
-      id: "",
-      label: "Home",
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
-      isDefault: false,
-      lat: 0,
-      lng: 0,
-  })
-
-  const [paymentMethod, setPaymentMethod] = useState('card')
-   
-  const deliveryFee = cartTotal > 20 ? 0 : 1.99;
-    const tax = cartTotal * 0.16;
-    const total = cartTotal + deliveryFee + tax;
-
-    const steps: {key: string; label: string; icon: typeof MapPinIcon}[] = [
-        {key: "address", label: "Address", icon: MapPinIcon},
-        {key: "payment", label: "Payment", icon: CreditCardIcon},
-        {key: "review", label: "Review", icon: CheckIcon},
-    ]
-
-    const handlePlaceOrder = async () => {
-        setLoading(true)
-        try {
-            const orderData = {
-                items: items.map((item) => ({
-                    product: item.product.id,
-                    quantity: item.quantity,
-                })),
-                shippingAddress: address,
-                paymentMethod
-            }
-        
-            const { data } = await api.post('/orders', orderData)
-            console.log(data)
-            if (data.url) {
-                window.location.href = data.url;
-                return;
-            }
-        
-            clearCart()
-            toast.success("Order placed successfully!");
-            navigate(`/orders/${data.order.id}`)
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || error.message);
-        } finally {
-            setLoading(false);
-            scrollTo(0, 0);
-        }
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!customerEmail) {
+      toast.error("Please enter an email to receive your house plans.")
+      return
     }
-    
-   // Populate address from user's default address
-   useState(()=>{
-    if(user?.addresses?.length){
-        const defaultAddr = user.addresses.find((a)=>a.isDefault) || user.addresses[0]
-        setAddress({
-            id: defaultAddr?.id,
-            label: defaultAddr?.label,
-            address: defaultAddr?.address,
-            city: defaultAddr?.city,
-            state: defaultAddr?.state,
-            zip: defaultAddr?.zip,
-            isDefault: defaultAddr?.isDefault,
-            lat: defaultAddr?.lat,
-            lng: 0,
-        })
+    setLoading(true)
+    try {
+      await api.post("/orders", {
+        items: items.map((item) => ({
+          product: item.design.id,
+          quantity: item.quantity,
+        })),
+        customerEmail,
+        paymentMethod,
+      })
+      clearCart()
+      setSuccess(true)
+      toast.success("Order placed! Awaiting payment confirmation.")
+      setTimeout(() => navigate("/orders"), 1800)
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string }
+      toast.error(err.response?.data?.message || err.message || "Order failed")
+    } finally {
+      setLoading(false)
     }
-})
+  }
 
+  if (items.length === 0 && !success) {
+    return (
+      <div className="min-h-[60vh] flex-center px-4">
+        <Card className="max-w-md w-full rounded-3xl text-center p-8">
+          <CardContent>
+            <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
+            <p className="text-muted-foreground text-sm mb-6">Browse designs to continue</p>
+            <Button onClick={() => navigate("/products")} className="rounded-xl">
+              Browse designs
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
- if(items.length === 0){
-        return (
-            <div className="min-h-screen bg-app-cream flex-center">
-                <div className="text-center">
-                    <h2 className="text-xl font-semibold text-app-green mb-2">Your cart is empty</h2>
-                    <p className="text-sm font-semibold text-app-text-light mb-4">Add some products to checkout </p>
-                    <button onClick={() => navigate('/products')} className="px-5 py-2.5 bg-app-green text-white text-sm font-medium rounded-xl hover:bg-app-green-light transition-colors">
-                        Browse Products
-                    </button>
-                </div>
-            </div>
-        )
-    }
+  if (success) {
+    return (
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="min-h-[60vh] flex-center px-4"
+      >
+        <Card className="max-w-md w-full rounded-3xl p-8 text-center">
+          <CheckCircle2 className="size-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Order placed!</h2>
+          <p className="text-muted-foreground text-sm">Redirecting to your orders…</p>
+        </Card>
+      </motion.div>
+    )
+  }
 
-  
-  
+  const paymentOptions: { id: PaymentMethod; label: string; icon: typeof Smartphone }[] = [
+    { id: "M-Pesa", label: "M-Pesa", icon: Smartphone },
+    { id: "Stripe", label: "Card (Stripe)", icon: CreditCard },
+    { id: "Bank Transfer", label: "Bank transfer", icon: Building2 },
+  ]
+
   return (
-    <div className="min-h-screen bg-app-cream">
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-app-text-light hover:text-app-green mb-6 transition-colors">
-            <ArrowLeft className="size-4" /> Back
-        </button>
+    <div className="min-h-screen pb-20">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 rounded-xl">
+          <ArrowLeft className="size-4" /> Back
+        </Button>
 
-        <h1 className="text-2xl font-semibold text-app-green mb-8">Checkout</h1>
-{/* Steps */}
-<div className="flex items-center gap-2 mb-8">
-                    {steps.map((s, i) => (
-                        <div key={s.key} className="flex items-center gap-2">
-                            <button onClick={() => setStep(s.key)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${step === s.key ? "bg-app-green text-white" : "bg-white text-app-text-light"}`}>
-                                <s.icon className="size-4" /> {s.label}
-                                {i < steps.length - 1 && <ChevronRightIcon className="size-4 text-app-text-light" />}
-                            </button>
-                        </div>
-                    ))}
-    </div>
+        <h1 className="text-3xl font-bold tracking-tight mb-8">Checkout</h1>
 
+        <form onSubmit={handlePlaceOrder} className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="rounded-3xl glass">
+              <CardHeader>
+                <CardTitle>Delivery email</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  House plans are sent here after payment approval.
+                </p>
+                <Input
+                  type="email"
+                  required
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </CardContent>
+            </Card>
 
-<div className="grid md:grid-cols-3 gap-6">
-  {/* Main Form*/}
+            <Card className="rounded-3xl">
+              <CardHeader>
+                <CardTitle>Payment method</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {paymentOptions.map((opt) => (
+                  <label
+                    key={opt.id}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                      paymentMethod === opt.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      className="sr-only"
+                      checked={paymentMethod === opt.id}
+                      onChange={() => setPaymentMethod(opt.id)}
+                    />
+                    <opt.icon className="size-5 text-primary" />
+                    <span className="font-medium">{opt.label}</span>
+                  </label>
+                ))}
 
-  <div className="md:col-span-2">
-                {step === "address" && <CheckoutAddress address={address} setAddress={setAddress} setStep={setStep} user={user}/>}
+                {paymentMethod === "M-Pesa" && (
+                  <div className="rounded-2xl bg-green-500/10 border border-green-500/20 p-4 text-sm space-y-1">
+                    <p className="font-semibold text-green-700 dark:text-green-400">M-Pesa instructions</p>
+                    <p>Paybill: <strong>123456</strong> · Account: your email</p>
+                    <p>Amount: <strong>{currency}{total.toLocaleString()}</strong></p>
+                  </div>
+                )}
+                {paymentMethod === "Bank Transfer" && (
+                  <div className="rounded-2xl bg-muted p-4 text-sm space-y-1">
+                    <p className="font-semibold">Equity Bank · KEPlans Ltd</p>
+                    <p>Acc: 1234567890 · Email receipt to payments@keplans.com</p>
+                  </div>
+                )}
+                {paymentMethod === "Stripe" && <StripePaymentSection />}
+              </CardContent>
+            </Card>
+          </div>
 
-                {step === "payment" && <CheckoutPayment paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} setStep={setStep}/>}
-
-                {step === "review" && <CheckoutReview address={address} items={items} handlePlaceOrder={handlePlaceOrder} loading={loading} total={total}/>}
-
-            </div>
-
-
-  {/* Order summary Sidebar*/}
-
- <div className="bg-white rounded-2xl p-5 h-fit sticky top-24">
-                <h3 className="text-sm font-semibold text-app-green mb-4">Order Summary</h3>
-
-                <div className="space-y-2 text-sm">
-
-                    <div className="flex justify-between">
-                        <span className="text-app-text-light">Subtotal ({items.length} items)</span>
-                        <span>{currency}{cartTotal.toFixed(2)}</span>
-                    </div>
-
-                    <div className="flex justify-between">
-                        <span className="text-app-text-light">Delivery</span>
-                        <span> {deliveryFee === 0 ? <span className="text-app-success">Free</span> : `${currency}${deliveryFee.toFixed(2)}`} </span>
-                    </div>
-
-                    <div className="flex justify-between">
-                        <span className="text-app-text-light">Tax</span>
-                        <span>{currency}{tax.toFixed(2)}</span>
-                    </div>
-
-                    <div className="flex justify-between pt-3 border-t border-app-border text-base font-semibold">
-                        <span>Tax</span>
-                        <span className="text-app-green">{currency}{total.toFixed(2)}</span>
-                    </div>
-
-
+          <Card className="rounded-3xl h-fit lg:sticky lg:top-24 glass">
+            <CardHeader>
+              <CardTitle>Order summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {items.map((item) => (
+                <div key={item.design.id} className="flex justify-between text-sm gap-2">
+                  <span className="line-clamp-1">{item.design.title}</span>
+                  <span className="shrink-0 font-medium">
+                    {currency}{(item.design.price * item.quantity).toLocaleString()}
+                  </span>
                 </div>
-            </div>
-
-
-</div>
-
-
-</div>
-</div>
-)
+              ))}
+              <div className="flex justify-between text-lg font-bold pt-4 border-t border-border">
+                <span>Total</span>
+                <span className="text-primary">{currency}{total.toLocaleString()}</span>
+              </div>
+              <Button type="submit" disabled={loading} className="w-full rounded-xl" size="lg">
+                {loading ? "Processing…" : "Place order"}
+              </Button>
+            </CardContent>
+          </Card>
+        </form>
+      </div>
+    </div>
+  )
 }
-    
 
 export default Checkout

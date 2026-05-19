@@ -1,3 +1,6 @@
+/**
+ * Cloudinary SDK configuration for media uploads.
+ */
 import "dotenv/config";
 import { v2 as cloudinary } from "cloudinary";
 

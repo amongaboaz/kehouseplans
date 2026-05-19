@@ -1,8 +1,12 @@
-import { createContext, type ReactNode } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import type { User } from "../types";
-import { useNavigate } from "react-router-dom";
 import api from "../config/api";
-import { useContext, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
 interface AuthContextType {
@@ -15,80 +19,129 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(
-  undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  export function AuthProvider({children} : {children: ReactNode}){
-    const navigate = useNavigate()
-    const [user, setUser] = useState<User | null>(null)
-    const [token, setToken] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
-  
-    useEffect(()=>{
-      const savedToken = localStorage.getItem("auth_token")
-      const savedUser = localStorage.getItem("auth_user")
-  
-      if(savedToken && savedUser){
-        setToken(savedToken)
-        setUser(JSON.parse(savedUser))
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load auth from storage
+  useEffect(() => {
+    try {
+      const savedToken = localStorage.getItem("auth_token");
+      const savedUser = localStorage.getItem("auth_user");
+
+      if (savedToken && savedUser) {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+
+        // Attach token globally (IMPORTANT FIX)
+        api.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${savedToken}`;
       }
-      setLoading(false) 
-    },[])
+    } catch (err) {
+      console.error("Failed to parse auth storage", err);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
+  const login = async (email: string, password: string) => {
+    try {
+      const { data } = await api.post("/auth/login", {
+        email,
+        password,
+      });
 
-    const login = async (email: string, password: string) => {
-        try {
-          const { data } = await api.post('/auth/login', { email, password })
-          setUser(data.user)
-          setToken(data.token)
-          localStorage.setItem("auth_token", data.token)
-          localStorage.setItem("auth_user", JSON.stringify(data.user))
-          toast.success("Login successful")
-          navigate('/')
-        } catch (error: any) {
-          toast.error(error?.response?.data?.message || error?.message)
-        }
-      }
+      setUser(data.user);
+      setToken(data.token);
 
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
 
-      
-    const register = async (name: string, email: string, password: string) => {
-        try {
-          const { data } = await api.post('/auth/register', { name, email, password })
-          setUser(data.user)
-          setToken(data.token)
-          localStorage.setItem("auth_token", data.token)
-          localStorage.setItem("auth_user", JSON.stringify(data.user))
-          toast.success("Registration  successful")
-          navigate('/')
-        } catch (error: any) {
-          toast.error(error?.response?.data?.message || error?.message)
-        }
-      }
+      // IMPORTANT: set header for future requests
+      api.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${data.token}`;
 
+      toast.success("Login successful");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message);
+      throw error;
+    }
+  };
 
-      const logout = () => {
-        setUser(null)
-        setToken(null)
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("auth_user")
-      }
-    
-      const updateUser = (userData: Partial<User>) => {
-        if (user) {
-          const updated = { ...user, ...userData };
-          setUser(updated);
-          localStorage.setItem('auth_user', JSON.stringify(updated))
-        }
-      }
+  const register = async (
+    name: string,
+    email: string,
+    password: string
+  ) => {
+    try {
+      const { data } = await api.post("/auth/register", {
+        name,
+        email,
+        password,
+      });
 
-    return <AuthContext.Provider value={{ user,token,loading,login,register,logout,updateUser}}>
-        {children}
+      setUser(data.user);
+      setToken(data.token);
+
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+
+      api.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${data.token}`;
+
+      toast.success("Registration successful");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message);
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+
+    delete api.defaults.headers.common["Authorization"];
+  };
+
+  const updateUser = (userData: Partial<User>) => {
+    if (!user) return;
+
+    const updated = { ...user, ...userData };
+    setUser(updated);
+    localStorage.setItem("auth_user", JSON.stringify(updated));
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        register,
+        logout,
+        updateUser,
+      }}
+    >
+      {children}
     </AuthContext.Provider>
-  }
-  
-  export function useAuth(){
-    const context = useContext(AuthContext)
-    if(!context) throw new Error("useAuth must be used within AuthProvider");
-    return context;
-  }
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context)
+    throw new Error("useAuth must be used within AuthProvider");
+  return context;
+}

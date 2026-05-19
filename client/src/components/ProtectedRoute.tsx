@@ -5,13 +5,14 @@ import Loading from "./Loading"
 const ProtectedRoute = () => {
   const { user, loading } = useAuth()
 
+  // Show loading state while checking auth session
   if (loading) return <Loading />
-  if (!user) return <Navigate to='/login' replace />
 
-  return (
-    <Outlet />
-  )
+  // Redirect unauthenticated users to login
+  if (!user) return <Navigate to="/login" replace />
+
+  // Allow access to protected routes
+  return <Outlet />
 }
-
 
 export default ProtectedRoute
