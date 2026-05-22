@@ -14,7 +14,7 @@ import { inngest, functions } from "./inngest/index";
 import { stripeWebhook } from "./controllers/webhooks";
 
 const app = express();
-
+const port = process.env.PORT || 5000;
 
 // Stripe webhook must receive raw body (register before express.json())
 app.post(
@@ -48,4 +48,6 @@ app.use(
   }
 );
 
-export default app;
+app.listen(port, () => {
+  console.log(`Server is running at http://localhost:${port}`);
+});
