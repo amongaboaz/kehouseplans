@@ -23,7 +23,9 @@ app.post(
   stripeWebhook
 );
 
-app.use(cors());
+app.use(cors({
+  origin:"*"
+}));
 app.use(express.json());
 
 /** Health check */
@@ -51,3 +53,5 @@ app.use(
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
+
+export default app
